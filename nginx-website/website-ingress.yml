@@ -1,0 +1,26 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/redirect-entry-point: https
+  generation: 5
+  labels:
+    app: website
+  name: website
+  namespace: website
+spec:
+  rules:
+  - host: mysite.com
+    http:
+      paths:
+      - backend:
+          serviceName: website
+          servicePort: 80
+  - host: www.mysite.com
+    http:
+      paths:
+      - backend:
+          serviceName: website
+          servicePort: 80
+  tls:
+  - secretName: website-acme-certificate

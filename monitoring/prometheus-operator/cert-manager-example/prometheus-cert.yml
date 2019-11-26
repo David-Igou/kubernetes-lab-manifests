@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: prometheus-certificate
+  namespace: monitoring
+spec:
+  secretName: prometheus-acme-certificate
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: prometheus.myorg.com
+  dnsNames:
+  - prometheus.myorg.com

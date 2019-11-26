@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/redirect-entry-point: https
+  name: prometheus-ingress
+  namespace: monitoring
+spec:
+  rules:
+  - host: prometheus.myorg.com
+    http:
+      paths:
+      - backend:
+          serviceName: prometheus
+          servicePort: 9090
+  tls:
+  - secretName: prometheus-acme-certificate
+

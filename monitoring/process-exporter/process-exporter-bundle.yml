@@ -1,0 +1,186 @@
+---
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  labels:     
+    app: prometheus-process-exporter
+  name: prometheus-process-exporter
+spec:
+  privileged: false
+  # Required to prevent escalations to root.
+  # allowPrivilegeEscalation: false
+  # This is redundant with non-root + disallow privilege escalation,
+  # but we can provide it for defense in depth.
+  #requiredDropCapabilities:
+  #  - ALL
+  # Allow core volume types.
+  volumes:
+    - 'configMap'
+    - 'emptyDir'
+    - 'projected'
+    - 'secret'
+    - 'downwardAPI'
+    - 'persistentVolumeClaim'
+    - 'hostPath'
+  hostNetwork: true
+  hostIPC: false
+  hostPID: true
+  hostPorts:
+    - min: 0
+      max: 65535
+  runAsUser:
+    # Permits the container to run with root privileges as well.
+    rule: 'RunAsAny'
+  seLinux:
+    # This policy assumes the nodes are using AppArmor rather than SELinux.
+    rule: 'RunAsAny'
+  supplementalGroups:
+    rule: 'MustRunAs'
+    ranges:
+      # Forbid adding the root group.
+      - min: 0
+        max: 65535
+  fsGroup:
+    rule: 'MustRunAs'
+    ranges:
+      # Forbid adding the root group.
+      - min: 0
+        max: 65535
+  readOnlyRootFilesystem: false
+
+---
+# Source: prometheus-process-exporter/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-process-exporter
+  labels:
+    app: prometheus-process-exporter
+imagePullSecrets: 
+  null
+  
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  labels:     
+    app: prometheus-process-exporter
+  name: prometheus-process-exporter
+rules:
+- apiGroups: ['extensions']
+  resources: ['podsecuritypolicies']
+  verbs:     ['use']
+  resourceNames:
+  - prometheus-process-exporter
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  labels:     
+    app: prometheus-process-exporter
+  name: prometheus-process-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-process-exporter
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-process-exporter
+    namespace: default
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: process-exporter
+  labels:     
+    app: prometheus-process-exporter
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9100
+      targetPort: 9100
+      protocol: TCP
+      name: metrics
+  selector:
+    app: prometheus-process-exporter
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: process-exporter
+  labels:     
+    app: prometheus-process-exporter
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-process-exporter
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:         
+        app: prometheus-process-exporter
+      annotations:
+        checksum/config: 301ca6e72fa7bd2d05244f24fb714f90d0a43c6ebebe9f1b601d5c20542f56eb
+    spec:
+      serviceAccountName: prometheus-process-exporter
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        
+      containers:
+        - name: process-exporter
+          image: "ncabatoff/process-exporter:0.5.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --procfs=/host/proc
+            - --config.path=/var/process-exporter/config.yml
+            - --web.listen-address=0.0.0.0:9100
+          ports:
+            - name: metrics
+              containerPort: 9100
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9100
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            successThreshold: 1
+            
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9100
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            successThreshold: 1
+            
+          resources:
+            {}
+            
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly:  true
+            - name: config
+              mountPath: /var/process-exporter
+      hostPID: true
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: config
+          configMap:
+            name: process-exporter

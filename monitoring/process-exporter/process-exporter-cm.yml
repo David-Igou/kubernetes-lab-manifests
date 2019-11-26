@@ -1,0 +1,23 @@
+# Source: prometheus-process-exporter/templates/configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: process-exporter
+  labels:
+    app: prometheus-process-exporter
+data:
+
+  config.yml: |-
+    process_names:
+    - comm:
+      - chronyd
+    - comm:
+      - bash
+    - comm:
+      - rsync
+    - comm:
+      - scp
+    - comm:
+      - ssh
+    - comm:
+      - cron
