@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-exporter-osrs
+  labels:
+    app: blackbox-exporter
+spec:
+  endpoints:
+  - port: http
+    scheme: http
+    path: "/probe"
+    interval: 30s
+    scrapeTimeout: 30s
+    params:
+      module:
+      - icmp_test
+      target:
+      - oldschool1.runescape.com
+      - google.com
+      - amazon.com
+    metricRelabelings:
+      - sourceLabels: [__address__]
+        targetLabel: __param_target
+      - sourceLabels: [__param_target]
+        targetLabel: instance
+  jobLabel: "blackbox-exporter-osrs"
+  selector:
+    matchLabels:
+      app: blackbox-exporter

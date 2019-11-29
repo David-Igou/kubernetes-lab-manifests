@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: blackbox-exporter
+spec:
+  rules:
+  - host: blackbox.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: blackbox-exporter
+          servicePort: 9115
+

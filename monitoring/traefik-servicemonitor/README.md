@@ -1,3 +1,1 @@
-# to do
-
-I keep accidently deleting it
+this "just works" with k3s traefik deployment

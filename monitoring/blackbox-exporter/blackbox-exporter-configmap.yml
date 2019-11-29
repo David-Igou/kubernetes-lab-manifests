@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter
+  labels:
+    app: blackbox-exporter
+data:
+  blackbox.yaml: |
+    modules:
+      icmp_test:
+        prober: icmp
+        timeout: 5s
+        icmp:
+          preferred_ip_protocol: ip4
+      http_2xx:
+        http:
+          no_follow_redirects: false
+          preferred_ip_protocol: ip4
+          valid_http_versions:
+          - HTTP/1.1
+          - HTTP/2
+        prober: http
+        timeout: 5s
